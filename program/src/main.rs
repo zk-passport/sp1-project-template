@@ -1,30 +1,55 @@
-//! A simple program that takes a number `n` as input, and writes the `n-1`th and `n`th fibonacci
-//! number as an output.
-
-// These two lines are necessary for the program to properly compile.
-//
-// Under the hood, we wrap your main function with some extra code so that it behaves properly
-// inside the zkVM.
+// Verifies Spartan over BN-254
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use alloy_sol_types::SolType;
-use fibonacci_lib::{fibonacci, PublicValuesStruct};
+use sp1_zkvm::io::{commit, read};
+
+use ark_bn254::{Fr, G1Projective};
+use ark_serialize::CanonicalDeserialize;
+use libspartan::{r1csinstance::R1CSInstance, InputsAssignment, Instance, NIZKGens, NIZK};
+use merlin::Transcript;
 
 pub fn main() {
-    // Read an input to the program.
-    //
-    // Behind the scenes, this compiles down to a custom system call which handles reading inputs
-    // from the prover.
-    let n = sp1_zkvm::io::read::<u32>();
+    // Read the serialized data from inputs
+    let spartan_inst_bytes: Vec<u8> = read();
+    let proof_bytes: Vec<u8> = read();
+    let inputs_bytes: Vec<u8> = read();
 
-    // Compute the n'th fibonacci number using a function from the workspace lib crate.
-    let (a, b) = fibonacci(n);
+    // Deserialize spartan_inst
+    let spartan_inst = {
+        let mut reader = &spartan_inst_bytes[..];
+        let inner_inst = R1CSInstance::deserialize_compressed(&mut reader)
+            .expect("Failed to deserialize instance");
+        Instance::from_r1cs_instance(inner_inst)
+    };
 
-    // Encode the public values of the program.
-    let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct { n, a, b });
+    // Deserialize proof
+    let proof = {
+        let mut reader = &proof_bytes[..];
+        NIZK::<G1Projective>::deserialize_compressed(&mut reader)
+            .expect("Failed to deserialize proof")
+    };
 
-    // Commit to the public values of the program. The final proof will have a commitment to all the
-    // bytes that were committed to.
-    sp1_zkvm::io::commit_slice(&bytes);
+    // Deserialize inputs
+    let inputs = {
+        let mut reader = &inputs_bytes[..];
+        let assignment =
+            Vec::<Fr>::deserialize_compressed(&mut reader).expect("Failed to deserialize inputs");
+        InputsAssignment::new(&assignment).expect("Failed to create InputsAssignment")
+    };
+
+    // Initialize the generators
+    let gens = NIZKGens::<G1Projective>::new(
+        spartan_inst.inst.get_num_cons(),
+        spartan_inst.inst.get_num_vars(),
+        spartan_inst.inst.get_num_inputs(),
+    );
+
+    // Verify the proof
+    let mut verifier_transcript = Transcript::new(b"nizk_example");
+    let result = proof.verify(&spartan_inst, &inputs, &mut verifier_transcript, &gens);
+
+    // Output the result
+    let success = result.is_ok();
+    commit(&success);
 }

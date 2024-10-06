@@ -10,10 +10,11 @@
 //! RUST_LOG=info cargo run --release -- --prove
 //! ```
 
-use alloy_sol_types::SolType;
 use clap::Parser;
-use fibonacci_lib::PublicValuesStruct;
+// use fibonacci_lib::PublicValuesStruct;
 use sp1_sdk::{ProverClient, SP1Stdin};
+use std::fs::File;
+use std::io::Read;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
 pub const FIBONACCI_ELF: &[u8] = include_bytes!("../../../elf/riscv32im-succinct-zkvm-elf");
@@ -47,28 +48,56 @@ fn main() {
     // Setup the prover client.
     let client = ProverClient::new();
 
-    // Setup the inputs.
-    let mut stdin = SP1Stdin::new();
-    stdin.write(&args.n);
+    let mut spartan_inst_bytes = Vec::new();
+    File::open("spartan_inst.bin")
+        .unwrap()
+        .read_to_end(&mut spartan_inst_bytes)
+        .unwrap();
 
-    println!("n: {}", args.n);
+    let mut proof_bytes = Vec::new();
+    File::open("proof.bin")
+        .unwrap()
+        .read_to_end(&mut proof_bytes)
+        .unwrap();
+
+    let mut inputs_bytes = Vec::new();
+    File::open("inputs.bin")
+        .unwrap()
+        .read_to_end(&mut inputs_bytes)
+        .unwrap();
+
+    // Prepare the inputs to the SP1 program
+    let mut stdin = SP1Stdin::new();
+    stdin.write(&spartan_inst_bytes);
+    stdin.write(&proof_bytes);
+    stdin.write(&inputs_bytes);
 
     if args.execute {
         // Execute the program
         let (output, report) = client.execute(FIBONACCI_ELF, stdin).run().unwrap();
         println!("Program executed successfully.");
+        println!("report: {}", report);
+        println!("output: {:?}", output);
+
+        // Check if the output is one
+        let output_slice = output.as_slice();
+        if !output_slice.is_empty() && output_slice[0] == 1 {
+            println!("Success.");
+        } else {
+            println!("Failed.");
+        }
 
         // Read the output.
-        let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
-        let PublicValuesStruct { n, a, b } = decoded;
-        println!("n: {}", n);
-        println!("a: {}", a);
-        println!("b: {}", b);
+        // let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
+        // let PublicValuesStruct { n, a, b } = decoded;
+        // println!("n: {}", n);
+        // println!("a: {}", a);
+        // println!("b: {}", b);
 
-        let (expected_a, expected_b) = fibonacci_lib::fibonacci(n);
-        assert_eq!(a, expected_a);
-        assert_eq!(b, expected_b);
-        println!("Values are correct!");
+        // let (expected_a, expected_b) = fibonacci_lib::fibonacci(n);
+        // assert_eq!(a, expected_a);
+        // assert_eq!(b, expected_b);
+        // println!("Values are correct!");
 
         // Record the number of cycles executed.
         println!("Number of cycles: {}", report.total_instruction_count());
