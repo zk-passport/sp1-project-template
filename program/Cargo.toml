@@ -8,11 +8,9 @@ alloy-sol-types = { workspace = true }
 sp1-zkvm = "2.0.0"
 fibonacci-lib = { path = "../lib" }
 
-ark-bn254 = { version = "^0.4.0", default-features = false, features = [ "curve" ] }
-ark-serialize =  { version = "^0.4.0", default-features = false  }
-
 # merlin = "3.0.0"
 merlin = { git = "https://github.com/zk-passport/merlin", branch = "main" }
 
-# libspartan = { path = "../../../spartan" }
-libspartan = { git = "https://github.com/zk-passport/spartan", branch = "sp1-bn254" }
+# spartan = { path = "../../../spartan" }
+spartan = { git = "https://github.com/zk-passport/Spartan", branch = "curve25519" }
+bincode = { version = "1.3.3", default-features = false }

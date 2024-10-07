@@ -4,9 +4,7 @@ sp1_zkvm::entrypoint!(main);
 
 use sp1_zkvm::io::{commit, read};
 
-use ark_bn254::{Fr, G1Projective};
-use ark_serialize::CanonicalDeserialize;
-use libspartan::{r1csinstance::R1CSInstance, InputsAssignment, Instance, NIZKGens, NIZK};
+use libspartan::{InputsAssignment, Instance, NIZKGens, NIZK};
 use merlin::Transcript;
 
 pub fn main() {
@@ -16,30 +14,18 @@ pub fn main() {
     let inputs_bytes: Vec<u8> = read();
 
     // Deserialize spartan_inst
-    let spartan_inst = {
-        let mut reader = &spartan_inst_bytes[..];
-        let inner_inst = R1CSInstance::deserialize_compressed(&mut reader)
-            .expect("Failed to deserialize instance");
-        Instance::from_r1cs_instance(inner_inst)
-    };
+    let spartan_inst: Instance =
+        bincode::deserialize(&spartan_inst_bytes).expect("Failed to deserialize instance");
 
     // Deserialize proof
-    let proof = {
-        let mut reader = &proof_bytes[..];
-        NIZK::<G1Projective>::deserialize_compressed(&mut reader)
-            .expect("Failed to deserialize proof")
-    };
+    let proof: NIZK = bincode::deserialize(&proof_bytes).expect("Failed to deserialize proof");
 
     // Deserialize inputs
-    let inputs = {
-        let mut reader = &inputs_bytes[..];
-        let assignment =
-            Vec::<Fr>::deserialize_compressed(&mut reader).expect("Failed to deserialize inputs");
-        InputsAssignment::new(&assignment).expect("Failed to create InputsAssignment")
-    };
+    let inputs: InputsAssignment =
+        bincode::deserialize(&inputs_bytes).expect("Failed to deserialize inputs");
 
     // Initialize the generators
-    let gens = NIZKGens::<G1Projective>::new(
+    let gens = NIZKGens::new(
         spartan_inst.inst.get_num_cons(),
         spartan_inst.inst.get_num_vars(),
         spartan_inst.inst.get_num_inputs(),

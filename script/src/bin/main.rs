@@ -48,23 +48,10 @@ fn main() {
     // Setup the prover client.
     let client = ProverClient::new();
 
-    let mut spartan_inst_bytes = Vec::new();
-    File::open("spartan_inst.bin")
-        .unwrap()
-        .read_to_end(&mut spartan_inst_bytes)
-        .unwrap();
-
-    let mut proof_bytes = Vec::new();
-    File::open("proof.bin")
-        .unwrap()
-        .read_to_end(&mut proof_bytes)
-        .unwrap();
-
-    let mut inputs_bytes = Vec::new();
-    File::open("inputs.bin")
-        .unwrap()
-        .read_to_end(&mut inputs_bytes)
-        .unwrap();
+    // Read the serialized byte arrays directly from the files
+    let spartan_inst_bytes: Vec<u8> = std::fs::read("spartan_inst.bin").unwrap();
+    let proof_bytes: Vec<u8> = std::fs::read("proof.bin").unwrap();
+    let inputs_bytes: Vec<u8> = std::fs::read("inputs.bin").unwrap();
 
     // Prepare the inputs to the SP1 program
     let mut stdin = SP1Stdin::new();
