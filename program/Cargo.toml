@@ -12,5 +12,6 @@ fibonacci-lib = { path = "../lib" }
 merlin = { git = "https://github.com/zk-passport/merlin", branch = "main" }
 
 # spartan = { path = "../../../spartan" }
-spartan = { git = "https://github.com/zk-passport/Spartan", branch = "curve25519" }
+# spartan = { git = "https://github.com/zk-passport/Spartan", branch = "curve25519" }
+libspartan = { path = "../../../spartan-ecdsa/packages/Spartan-secq" }
 bincode = { version = "1.3.3", default-features = false }
